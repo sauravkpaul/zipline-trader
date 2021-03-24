@@ -544,10 +544,11 @@ class TradingAlgorithm(object):
             execution_opens = execution_closes
 
         # FIXME generalize these values
+        cal_market_open = self.trading_calendar.open_times[0][1]
         before_trading_start_minutes = days_at_time(
             self.sim_params.sessions,
-            time(8, 45),
-            "US/Eastern"
+            time(cal_market_open.hour-1, cal_market_open.minute),
+            self.trading_calendar.tz
         )
 
         return MinuteSimulationClock(
