@@ -26,7 +26,7 @@ from trading_calendars import TradingCalendar
 
 from ratelimit import limits, sleep_and_retry
 
-import config
+import zipline.config
 from zipline.data.bundles import core as bundles
 from zipline.data.bundles.common import asset_to_sid_map
 from zipline.data.bundles.universe import Universe, get_sp500, get_sp100, get_nasdaq100, all_alpaca_assets
@@ -36,9 +36,7 @@ import trading_calendars
 import os
 import time
 
-from zipline.errors import SymbolNotFound, SidsNotFound
-
-av_config = config.bundle.AlphaVantage()
+av_config = zipline.config.bundle.AlphaVantage()
 AV_FREQ_SEC = av_config.sample_frequency
 AV_CALLS_PER_FREQ = av_config.max_calls_per_freq
 AV_TOLERANCE_SEC = av_config.breathing_space
@@ -155,6 +153,7 @@ def av_get_data_for_symbol(symbol, start, end, interval):
         df.index = pd.to_datetime(df['date'])
         df.index = df.index.tz_localize('UTC')
         df.drop(columns=['date'], inplace=True)
+        df.sort_index(inplace=True)
 
     else:
         data = av_api_wrapper(symbol, interval)
@@ -174,10 +173,9 @@ def av_get_data_for_symbol(symbol, start, end, interval):
             '8. split coefficient': 'split'
         }, inplace=True)
 
+        df.sort_index(inplace=True)
         # fill potential gaps in data
         df = fill_daily_gaps(df)
-
-    df.sort_index(inplace=True)
 
     # data comes as strings
     df['open'] = pd.to_numeric(df['open'], downcast='float')
@@ -346,7 +344,6 @@ def api_to_bundle(interval=['1m']):
 
         metadata = metadata_df(assets_to_sids)
 
-        assets = list_assets()
         for _interval in interval:
             if _interval == '1d':
                 daily_bar_writer.write(daily_data_generator(), assets=assets_to_sids.values(), show_progress=True,

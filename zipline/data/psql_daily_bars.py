@@ -16,7 +16,7 @@ from functools import partial
 import psycopg2
 import sqlalchemy as sa
 
-import config.data_backend
+import zipline.config.data_backend
 from zipline.utils.db_utils import check_and_create_engine
 import pandas as pd
 
@@ -43,7 +43,7 @@ from zipline.data.bar_reader import (
 )
 from zipline.utils.functional import apply
 from zipline.utils.input_validation import expect_element
-from zipline.utils.numpy_utils import iNaT, float64_dtype, uint32_dtype
+from zipline.utils.numpy_utils import float64_dtype
 from zipline.utils.memoize import lazyval
 from zipline.utils.cli import maybe_show_progress
 from ._equities import _compute_row_slices, _read_tape_data
@@ -530,7 +530,7 @@ class PSQLDailyBarWriter(object):
         create the bundle database. it will have the name of the bundle
         :param db_path: expected db path (table). used to get the bundle name.
         """
-        db_config = config.data_backend.PostgresDB()
+        db_config = zipline.config.data_backend.PostgresDB()
         host = db_config.host
         port = db_config.port
         user = db_config.user
@@ -711,7 +711,7 @@ class PSQLDailyBarWriter(object):
         return val
 
     @expect_element(invalid_data_behavior={'warn', 'raise', 'ignore'})
-    def _write_to_postgres(self, sid, data, invalid_data_behavior):
+    def _write_to_postgres(self, sid, data: pd.DataFrame, invalid_data_behavior):
 
         result = self._format_df_columns_and_index(data, sid)
         if not result.empty:
@@ -748,7 +748,7 @@ class PSQLDailyBarWriter(object):
         # sessions (sessions on the edge of the data and the slice)
         consistent_data = True
         if not before_slice.empty:
-            backward_gap = len(self._calendar.sessions_in_range(before_slice.index[-1], first_day))
+            backward_gap = len(self._calendar.sessions_in_range(before_slice.index[-1].tz_localize(None), first_day))
             if backward_gap != 2:
                 # max allowed gap for consistent data is 2
                 logger.warning(f"data for {sid} contains backward gaps {backward_gap} "
@@ -790,7 +790,7 @@ class PSQLDailyBarWriter(object):
         )
         return edge_days
 
-    def _format_df_columns_and_index(self, data, sid):
+    def _format_df_columns_and_index(self, data: pd.DataFrame, sid):
         """
         make sure that the data received is in the structure we expect columns and index wise.
         :param data: data from data bundle
